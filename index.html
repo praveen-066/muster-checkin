@@ -218,58 +218,79 @@ const FIREBASE_CONFIG = {
       statusBox.innerHTML = msg;
     }
 
-    btn.addEventListener('click', async ()=>{
-      const name = nameInput.value.trim();
-      if(!name){
-        setStatus('Add your name first.', 'err');
-        nameInput.focus();
-        return;
-      }
-      sessionStorage.setItem('muster_name', name);
+    let watchId = null;
+let lastSavedAt = 0;
 
-      if(!('geolocation' in navigator)){
-        setStatus("This browser doesn't support location sharing.", 'err');
-        return;
-      }
-
-      btn.disabled = true;
-      btn.textContent = 'Requesting permission…';
-      setStatus("Waiting on your browser's location prompt…");
-
-      navigator.geolocation.getCurrentPosition(
-        async (pos)=>{
-          const docId = name.toLowerCase().replace(/\s+/g,'_');
-          const entry = {
-            name,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            ts: Date.now()
-          };
-          try{
-            await checkinsCol.doc(docId).set(entry);
-            btn.disabled = false;
-            btn.textContent = 'Update my location';
-            setStatus(`Shared. <span class="mono">${entry.lat.toFixed(5)}, ${entry.lng.toFixed(5)}</span>`, 'ok');
-          }catch(err){
-            btn.disabled = false;
-            btn.textContent = 'Try again';
-            setStatus('Could not save your check-in. Please try again.', 'err');
-          }
-        },
-        (err)=>{
-          btn.disabled = false;
-          btn.textContent = 'Share my location';
-          if(err.code === err.PERMISSION_DENIED){
-            setStatus('Location permission was denied, so nothing was shared.', 'err');
-          } else {
-            setStatus('Could not get your location. Please try again.', 'err');
-          }
-        },
-        { enableHighAccuracy:true, timeout:15000, maximumAge:0 }
-      );
-    });
+btn.addEventListener('click', ()=>{
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    btn.textContent = 'Share my live location';
+    setStatus('Live location sharing stopped.', '');
+    return;
   }
+
+  const name = nameInput.value.trim();
+  if (!name) {
+    setStatus('Add your name first.', 'err');
+    nameInput.focus();
+    return;
+  }
+
+  if (!('geolocation' in navigator)) {
+    setStatus("This browser doesn't support location sharing.", 'err');
+    return;
+  }
+
+  sessionStorage.setItem('muster_name', name);
+  const docId = name.toLowerCase().replace(/\s+/g, '_');
+
+  btn.disabled = true;
+  btn.textContent = 'Starting live sharing…';
+  setStatus("Waiting for location permission…");
+
+  watchId = navigator.geolocation.watchPosition(
+    async (pos) => {
+      const now = Date.now();
+
+      // Avoid excessive database writes; keep the latest update every 3 seconds.
+      if (now - lastSavedAt < 3000) return;
+      lastSavedAt = now;
+
+      const entry = {
+        name,
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        ts: now
+      };
+
+      try {
+        await checkinsCol.doc(docId).set(entry);
+        btn.disabled = false;
+        btn.textContent = 'Stop live sharing';
+        setStatus(
+          `Live sharing is on · accuracy ±${Math.round(entry.accuracy)}m`,
+          'ok'
+        );
+      } catch (err) {
+        setStatus('Could not save the live update. Please try again.', 'err');
+      }
+    },
+    (err) => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      btn.disabled = false;
+      btn.textContent = 'Share my live location';
+      setStatus('Location sharing stopped or permission was denied.', 'err');
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 0
+    }
+  );
+});
 
   // ---------- ADMIN VIEW ----------
   function renderAdminGate(){
@@ -357,6 +378,7 @@ const FIREBASE_CONFIG = {
     markerLayer = L.layerGroup().addTo(mapInstance);
 
     await loadRoster();
+       setInterval(loadRoster, 5000);
   }
 
   async function loadRoster(){
