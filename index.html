@@ -418,7 +418,14 @@ btn.addEventListener('click', ()=>{
           fillColor: isStale ? '#7a8ba3' : '#e8a13b',
           fillOpacity: 0.85,
           weight: 2
-        }).bindPopup(`<b>${esc(entry.name)}</b><br>${timeAgo(entry.ts)}`);
+        }).bindPopup(`
+  <b>${esc(entry.name)}</b><br>
+  ${timeAgo(entry.ts)}<br><br>
+  <a href="https://www.google.com/maps?q=${entry.lat},${entry.lng}"
+     target="_blank" rel="noopener">
+     Open exact place in Google Maps
+  </a>
+`);
         marker.addTo(markerLayer);
         bounds.push([entry.lat, entry.lng]);
       });
