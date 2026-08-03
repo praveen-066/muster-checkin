@@ -405,7 +405,14 @@ btn.addEventListener('click', ()=>{
         row.className = 'person' + (isStale ? ' stale' : '');
         row.innerHTML = `
           <div class="name">${esc(entry.name)} ${isStale ? '<span class="badge">stale</span>' : ''}</div>
-          <div class="meta mono">${entry.lat.toFixed(5)}, ${entry.lng.toFixed(5)} · ${timeAgo(entry.ts)}</div>
+          <div class="meta">
+  <a href="https://www.google.com/maps?q=${entry.lat},${entry.lng}"
+     target="_blank" rel="noopener"
+     style="color:#e8a13b;">
+    View live place in Google Maps
+  </a>
+  · ${timeAgo(entry.ts)}
+</div>
         `;
         row.addEventListener('click', ()=>{
           mapInstance.setView([entry.lat, entry.lng], 15);
