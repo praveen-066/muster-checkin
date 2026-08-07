@@ -4,299 +4,117 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Muster — Real-time Location Tracer</title>
-
-<!-- Modern Premium Typography -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-<!-- Leaflet Maps CSS -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-
-<!-- Firebase compatibility libraries -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
 <style>
   :root {
     --bg-gradient: linear-gradient(135deg, #070b12 0%, #0d1527 50%, #080d1a 100%);
     --card-bg: rgba(16, 26, 48, 0.65);
     --border-color: rgba(255, 255, 255, 0.08);
     --border-focus: #ff7a00;
-    
     --text-primary: #f3f6fa;
     --text-secondary: #8e9db5;
     --accent: #ff7a00;
     --accent-hover: #ff9533;
     --accent-glow: rgba(255, 122, 0, 0.35);
-    
     --teal-success: #00f5d4;
     --teal-glow: rgba(0, 245, 212, 0.25);
     --danger: #ff5e5e;
-    
     --font-heading: 'Outfit', sans-serif;
     --font-body: 'Inter', sans-serif;
   }
-
-  * {
-    box-sizing: border-box;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    min-height: 100vh;
-    background: var(--bg-gradient);
-    color: var(--text-primary);
-    font-family: var(--font-body);
-    display: flex;
-    flex-direction: column;
-    overflow-x: hidden;
-  }
-
-  .glass-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
-  }
-
-  .wrap {
-    width: 100%;
-    max-width: 480px;
-    margin: auto;
-    padding: 40px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .logo-header {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin-bottom: 8px;
-  }
-
-  .ping-indicator {
-    position: relative;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: var(--accent);
-  }
-
-  .ping-indicator::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    border: 2px solid var(--accent);
-    animation: ping 2s infinite ease-out;
-  }
-
-  .ping-indicator.active {
-    background: var(--teal-success);
-  }
-  
-  .ping-indicator.active::after {
-    border-color: var(--teal-success);
-  }
-
-  @keyframes ping {
-    0% { width: 100%; height: 100%; opacity: 1; }
-    100% { width: 320%; height: 320%; opacity: 0; }
-  }
-
-  .logo-text {
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 14px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
-  
+  * { box-sizing: border-box; transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
+  html, body { margin: 0; padding: 0; width: 100%; min-height: 100vh; background: var(--bg-gradient); color: var(--text-primary); font-family: var(--font-body); display: flex; flex-direction: column; overflow-x: hidden; }
+  .glass-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 12px 40px 0 rgba(0,0,0,0.5); }
+  .wrap { width: 100%; max-width: 480px; margin: auto; padding: 40px 24px; display: flex; flex-direction: column; gap: 24px; }
+  .logo-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; }
+  .ping-indicator { position: relative; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+  .ping-indicator::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; border-radius: 50%; border: 2px solid var(--accent); animation: ping 2s infinite ease-out; }
+  .ping-indicator.active { background: var(--teal-success); }
+  .ping-indicator.active::after { border-color: var(--teal-success); }
+  @keyframes ping { 0% { width: 100%; height: 100%; opacity: 1; } 100% { width: 320%; height: 320%; opacity: 0; } }
+  .logo-text { font-family: var(--font-heading); font-weight: 700; font-size: 14px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
   .logo-text.active { color: var(--teal-success); }
-
-  h1 {
-    font-family: var(--font-heading);
-    font-size: 32px;
-    font-weight: 800;
-    text-align: center;
-    margin: 0;
-    letter-spacing: -0.02em;
-  }
-
-  .sub {
-    font-size: 15px;
-    color: var(--text-secondary);
-    text-align: center;
-    line-height: 1.6;
-    margin: 0 0 10px 0;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
-
-  label {
-    font-family: var(--font-heading);
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-secondary);
-  }
-
-  .input-field {
-    width: 100%;
-    background: rgba(8, 13, 26, 0.8);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    border-radius: 12px;
-    padding: 14px 16px;
-    font-size: 15px;
-    font-family: var(--font-body);
-    outline: none;
-  }
-
-  .input-field:focus {
-    border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px var(--accent-glow);
-  }
-
-  .btn {
-    width: 100%;
-    background: var(--accent);
-    color: #0c1420;
-    font-family: var(--font-heading);
-    font-size: 16px;
-    font-weight: 700;
-    border: none;
-    border-radius: 12px;
-    padding: 16px;
-    cursor: pointer;
-    box-shadow: 0 4px 15px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
+  h1 { font-family: var(--font-heading); font-size: 32px; font-weight: 800; text-align: center; margin: 0; letter-spacing: -0.02em; }
+  .sub { font-size: 15px; color: var(--text-secondary); text-align: center; line-height: 1.6; margin: 0 0 10px 0; }
+  .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+  label { font-family: var(--font-heading); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); }
+  .input-field { width: 100%; background: rgba(8,13,26,0.8); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 12px; padding: 14px 16px; font-size: 15px; font-family: var(--font-body); outline: none; }
+  .input-field:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .btn { width: 100%; background: var(--accent); color: #0c1420; font-family: var(--font-heading); font-size: 16px; font-weight: 700; border: none; border-radius: 12px; padding: 16px; cursor: pointer; box-shadow: 0 4px 15px var(--accent-glow); display: flex; align-items: center; justify-content: center; gap: 8px; }
   .btn:hover { background: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 6px 20px var(--accent-glow); }
   .btn:active { transform: translateY(0); }
   .btn:disabled { background: rgba(255,255,255,0.08); color: var(--text-secondary); cursor: not-allowed; box-shadow: none; transform: none; }
-
   .btn.btn-active { background: var(--teal-success); box-shadow: 0 4px 15px var(--teal-glow); }
   .btn.btn-active:hover { background: #40ffd8; box-shadow: 0 6px 20px var(--teal-glow); }
-
   .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); box-shadow: none; }
   .btn-outline:hover { background: rgba(255,255,255,0.04); border-color: var(--text-secondary); box-shadow: none; }
-
-  .status-box {
-    margin-top: 16px;
-    padding: 16px;
-    border-radius: 12px;
-    font-size: 14px;
-    line-height: 1.5;
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    background: rgba(255,255,255,0.02);
-    border: 1px solid var(--border-color);
-  }
-
+  .status-box { margin-top: 16px; padding: 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; display: flex; align-items: flex-start; gap: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); }
   .status-box.ok { border-color: rgba(0,245,212,0.2); background: rgba(0,245,212,0.04); color: var(--teal-success); }
   .status-box.err { border-color: rgba(255,94,94,0.2); background: rgba(255,94,94,0.04); color: var(--danger); }
-
   .portal-footer { display: flex; justify-content: center; gap: 16px; margin-top: 16px; font-size: 13px; }
   .portal-footer a { color: var(--text-secondary); text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 2px; }
   .portal-footer a:hover { color: var(--accent); border-bottom-color: var(--accent); }
-
   .portal-selection { display: flex; flex-direction: column; gap: 16px; }
-
-  .portal-choice-card {
-    display: flex; align-items: center; gap: 20px; padding: 24px;
-    cursor: pointer; border: 1px solid var(--border-color);
-    background: rgba(255,255,255,0.02); border-radius: 16px;
-  }
+  .portal-choice-card { display: flex; align-items: center; gap: 20px; padding: 24px; cursor: pointer; border: 1px solid var(--border-color); background: rgba(255,255,255,0.02); border-radius: 16px; }
   .portal-choice-card:hover { border-color: var(--accent); background: rgba(255,122,0,0.03); transform: translateY(-3px); }
-
   .portal-choice-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; font-size: 24px; }
   .portal-choice-info { display: flex; flex-direction: column; gap: 4px; }
   .portal-choice-title { font-family: var(--font-heading); font-weight: 700; font-size: 16px; }
   .portal-choice-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
-
   .dashboard-container { width: 100vw; height: 100vh; display: grid; grid-template-columns: 360px 1fr; overflow: hidden; }
   @media (max-width: 900px) { .dashboard-container { grid-template-columns: 1fr; grid-template-rows: 1fr 1.2fr; } }
-
   .dashboard-sidebar { background: #090e1a; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; height: 100%; z-index: 10; }
   .sidebar-header { padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 16px; }
-
   .search-wrapper { position: relative; }
   .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 16px; pointer-events: none; }
   .search-input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 16px 12px 40px; color: var(--text-primary); font-size: 14px; outline: none; }
   .search-input:focus { border-color: var(--accent); }
-
   .roster-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
   .roster-list::-webkit-scrollbar { width: 6px; }
   .roster-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
-
   .user-row { padding: 16px; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid transparent; cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
   .user-row:hover { background: rgba(255,255,255,0.04); border-color: var(--border-color); }
   .user-row.selected { background: rgba(255,122,0,0.08); border-color: var(--accent); }
   .user-row.stale { opacity: 0.55; }
-
   .user-row-header { display: flex; justify-content: space-between; align-items: center; }
   .user-row-name { font-weight: 600; font-size: 14px; }
   .user-row-phone { font-family: monospace; font-size: 12px; color: var(--text-secondary); }
   .user-row-address { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .user-row-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 6px; }
-
   .stale-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 100px; background: rgba(255,255,255,0.1); color: var(--text-secondary); }
   .active-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 100px; background: rgba(0,245,212,0.15); color: var(--teal-success); }
-
   .map-container { width: 100%; height: 100%; position: relative; background: #070b12; }
   #map { width: 100%; height: 100%; }
-
   .leaflet-container { font-family: var(--font-body); background-color: #070b12 !important; }
   .leaflet-bar { border: 1px solid var(--border-color) !important; box-shadow: none !important; background: var(--card-bg) !important; }
   .leaflet-bar a { background: rgba(16,26,48,0.9) !important; color: var(--text-primary) !important; border-bottom: 1px solid var(--border-color) !important; }
   .leaflet-bar a:hover { background: var(--accent) !important; color: #0c1420 !important; }
   .leaflet-popup-content-wrapper { background: rgba(9,14,26,0.95) !important; border: 1px solid var(--border-color); color: var(--text-primary) !important; border-radius: 12px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important; backdrop-filter: blur(8px); }
   .leaflet-popup-tip { background: rgba(9,14,26,0.95) !important; }
-
   .popup-details { display: flex; flex-direction: column; gap: 6px; padding: 4px; font-size: 13px; }
   .popup-name { font-family: var(--font-heading); font-weight: 700; font-size: 15px; color: var(--accent); }
   .popup-phone { font-family: monospace; font-size: 12px; color: var(--text-secondary); }
   .popup-place { font-size: 12px; margin-top: 4px; line-height: 1.4; }
   .popup-google-maps { display: inline-block; margin-top: 8px; color: var(--teal-success); text-decoration: none; font-weight: 600; font-size: 12px; }
   .popup-google-maps:hover { text-decoration: underline; }
-
+  .popup-directions-btn { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; padding: 10px 14px; background: var(--accent); color: #0c1420; font-weight: 700; font-size: 13px; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-family: var(--font-heading); }
+  .popup-directions-btn:hover { background: var(--accent-hover); }
+  .popup-directions-btn:disabled { background: rgba(255,255,255,0.1); color: var(--text-secondary); cursor: not-allowed; }
+  .row-directions-btn { margin-top: 8px; padding: 8px 12px; background: rgba(255,122,0,0.12); border: 1px solid rgba(255,122,0,0.3); color: var(--accent); font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer; width: 100%; font-family: var(--font-heading); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .row-directions-btn:hover { background: rgba(255,122,0,0.2); border-color: var(--accent); }
   .info-tag { font-size: 11px; color: var(--text-secondary); background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; }
-
   .no-checkins { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; height: 100%; padding: 40px; text-align: center; color: var(--text-secondary); }
   .no-checkins-icon { font-size: 40px; color: rgba(255,255,255,0.05); }
 </style>
 </head>
 <body>
-
 <div id="app"></div>
-
 <script>
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCwPxCjOYra4ceISJAhv9HdC3P2mSFZ9bo",
@@ -309,71 +127,65 @@ const FIREBASE_CONFIG = {
 
 (function(){
   const app = document.getElementById('app');
-
   firebase.initializeApp(FIREBASE_CONFIG);
   const db = firebase.firestore();
   const checkinsCol = db.collection('checkins');
 
-  let watchId = null;
-  let lastSavedAt = 0;
-  let mapInstance = null;
-  let markerLayer = null;
-  let markers = {};
-  let checkinSub = null;
-  let cachedEntries = [];
+  let watchId = null, lastSavedAt = 0, mapInstance = null, markerLayer = null;
+  let markers = {}, checkinSub = null, cachedEntries = [];
 
   const params = new URLSearchParams(location.search);
   if(params.has('admin')) {
-    if(sessionStorage.getItem('muster_admin_ok') === '1') {
-      setView('admin-dashboard');
-    } else {
-      setView('admin-login');
-    }
-  } else {
-    setView('select-portal');
+    sessionStorage.getItem('muster_admin_ok')==='1' ? setView('admin-dashboard') : setView('admin-login');
+  } else { setView('select-portal'); }
+
+  function setView(v) {
+    if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
+    if(checkinSub){checkinSub();checkinSub=null;}
+    if(mapInstance){mapInstance.remove();mapInstance=null;}
+    if(v==='select-portal') renderSelectPortal();
+    else if(v==='user-login') renderUserLogin();
+    else if(v==='user-sharing') renderUserSharing();
+    else if(v==='admin-login') renderAdminLogin();
+    else if(v==='admin-dashboard') renderAdminDashboard();
   }
 
-  function setView(viewName) {
-    if(watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-    if(checkinSub) { checkinSub(); checkinSub = null; }
-    if(mapInstance) { mapInstance.remove(); mapInstance = null; }
-    if(viewName === 'select-portal') renderSelectPortal();
-    else if(viewName === 'user-login') renderUserLogin();
-    else if(viewName === 'user-sharing') renderUserSharing();
-    else if(viewName === 'admin-login') renderAdminLogin();
-    else if(viewName === 'admin-dashboard') renderAdminDashboard();
+  function esc(s){return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function formatPhoneInput(v){return v.replace(/[^\d+]/g,'');}
+  function timeAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return 'Just now';const m=Math.floor(s/60);if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago';}
+
+  async function getPlaceName(lat,lng){
+    try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,{headers:{'Accept-Language':'en'}});if(!r.ok)return 'Coordinates Shared';const d=await r.json();return d&&d.display_name?d.display_name:'Coordinates Shared';}catch(e){return 'Coordinates Shared';}
   }
 
-  function esc(s){ return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-  function formatPhoneInput(v){ return v.replace(/[^\d+]/g,''); }
-
-  function timeAgo(ts){
-    const s=Math.floor((Date.now()-ts)/1000);
-    if(s<60) return 'Just now';
-    const m=Math.floor(s/60); if(m<60) return m+'m ago';
-    const h=Math.floor(m/60); if(h<24) return h+'h ago';
-    return Math.floor(h/24)+'d ago';
-  }
-
-  async function getPlaceName(lat, lng) {
-    try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,{headers:{'Accept-Language':'en'}});
-      if(!r.ok) return 'Coordinates Shared';
-      const d = await r.json();
-      return d && d.display_name ? d.display_name : 'Coordinates Shared';
-    } catch(e) { return 'Coordinates Shared'; }
-  }
-
-  function estimateCarrier(phone) {
-    if(!phone) return 'Unknown';
-    if(phone.startsWith('+91')){ const s=phone.substring(3,5); if(['98','99','88','81','80'].includes(s)) return 'Airtel'; if(['97','96','95','90','85'].includes(s)) return 'Vodafone Idea'; return 'Jio'; }
-    if(phone.startsWith('+1')) return 'Verizon / AT&T';
-    if(phone.startsWith('+44')) return 'EE / Vodafone';
+  function estimateCarrier(p){
+    if(!p)return 'Unknown';
+    if(p.startsWith('+91')){const s=p.substring(3,5);if(['98','99','88','81','80'].includes(s))return 'Airtel';if(['97','96','95','90','85'].includes(s))return 'Vodafone Idea';return 'Jio';}
+    if(p.startsWith('+1'))return 'Verizon / AT&T';
+    if(p.startsWith('+44'))return 'EE / Vodafone';
     return 'GSM Cellular';
   }
 
-  // ---- PORTAL SELECTION ----
+  function openDirections(destLat, destLng, btn, label) {
+    btn.disabled = true;
+    btn.textContent = '📍 Getting your location...';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${pos.coords.latitude},${pos.coords.longitude}&destination=${destLat},${destLng}&travelmode=driving`;
+        window.open(url, '_blank');
+        btn.disabled = false;
+        btn.textContent = label;
+      },
+      () => {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`, '_blank');
+        btn.disabled = false;
+        btn.textContent = label;
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  // ---- SELECT PORTAL ----
   function renderSelectPortal() {
     app.innerHTML = `
       <div class="wrap">
@@ -407,141 +219,87 @@ const FIREBASE_CONFIG = {
       <div class="wrap">
         <div class="logo-header"><span class="ping-indicator"></span><span class="logo-text">User Portal</span></div>
         <h1>Device Verification</h1>
-        <p class="sub">Enter your name and phone number to begin sharing your live location with the organizer.</p>
-        <div class="glass-card" style="padding: 28px;">
-          <div class="form-group">
-            <label for="userName">Full Name</label>
-            <input type="text" id="userName" class="input-field" placeholder="e.g. Priya Sharma" autocomplete="name" />
-          </div>
-          <div class="form-group">
-            <label for="userPhone">Phone Number</label>
-            <input type="text" id="userPhone" class="input-field" placeholder="e.g. +919876543210" />
-          </div>
+        <p class="sub">Enter your name and phone number to begin sharing your live location.</p>
+        <div class="glass-card" style="padding:28px;">
+          <div class="form-group"><label for="userName">Full Name</label><input type="text" id="userName" class="input-field" placeholder="e.g. Priya Sharma" /></div>
+          <div class="form-group"><label for="userPhone">Phone Number</label><input type="text" id="userPhone" class="input-field" placeholder="e.g. +919876543210" /></div>
           <button id="btnUserLogin" class="btn">Verify &amp; Share Location</button>
           <div id="loginStatus" class="status-box" style="display:none;"></div>
         </div>
-        <div class="portal-footer">
-          <a href="#" id="backPortal">← Back to Portal Select</a>
-        </div>
+        <div class="portal-footer"><a href="#" id="backPortal">← Back to Portal Select</a></div>
       </div>`;
-
-    const phoneInput = document.getElementById('userPhone');
-    const nameInput = document.getElementById('userName');
-    const loginBtn = document.getElementById('btnUserLogin');
-    const statusBox = document.getElementById('loginStatus');
-
-    if(sessionStorage.getItem('muster_user_name')) nameInput.value = sessionStorage.getItem('muster_user_name');
-    if(sessionStorage.getItem('muster_user_phone')) phoneInput.value = sessionStorage.getItem('muster_user_phone');
-
-    phoneInput.oninput = () => { phoneInput.value = formatPhoneInput(phoneInput.value); };
-    document.getElementById('backPortal').onclick = (e) => { e.preventDefault(); setView('select-portal'); };
-
-    loginBtn.onclick = () => {
-      const name = nameInput.value.trim();
-      const phone = phoneInput.value.trim();
-      if(!name){ showSt('Please enter your name.','err'); nameInput.focus(); return; }
-      if(!phone||phone.length<10){ showSt('Please enter a valid phone number (e.g. +919876543210).','err'); phoneInput.focus(); return; }
-      sessionStorage.setItem('muster_user_name', name);
-      sessionStorage.setItem('muster_user_phone', phone);
+    const phoneInput=document.getElementById('userPhone'), nameInput=document.getElementById('userName');
+    const loginBtn=document.getElementById('btnUserLogin'), statusBox=document.getElementById('loginStatus');
+    if(sessionStorage.getItem('muster_user_name')) nameInput.value=sessionStorage.getItem('muster_user_name');
+    if(sessionStorage.getItem('muster_user_phone')) phoneInput.value=sessionStorage.getItem('muster_user_phone');
+    phoneInput.oninput=()=>{phoneInput.value=formatPhoneInput(phoneInput.value);};
+    document.getElementById('backPortal').onclick=(e)=>{e.preventDefault();setView('select-portal');};
+    loginBtn.onclick=()=>{
+      const name=nameInput.value.trim(), phone=phoneInput.value.trim();
+      if(!name){showSt('Please enter your name.','err');nameInput.focus();return;}
+      if(!phone||phone.length<10){showSt('Please enter a valid phone number.','err');phoneInput.focus();return;}
+      sessionStorage.setItem('muster_user_name',name);
+      sessionStorage.setItem('muster_user_phone',phone);
       setView('user-sharing');
     };
-
-    function showSt(msg, type){ statusBox.style.display='flex'; statusBox.className='status-box '+type; statusBox.textContent=msg; }
+    function showSt(msg,type){statusBox.style.display='flex';statusBox.className='status-box '+type;statusBox.textContent=msg;}
   }
 
   // ---- USER SHARING ----
   function renderUserSharing() {
-    const name = sessionStorage.getItem('muster_user_name');
-    const phone = sessionStorage.getItem('muster_user_phone');
-    if(!name||!phone){ setView('user-login'); return; }
-
+    const name=sessionStorage.getItem('muster_user_name'), phone=sessionStorage.getItem('muster_user_phone');
+    if(!name||!phone){setView('user-login');return;}
     app.innerHTML = `
       <div class="wrap">
         <div class="logo-header"><span id="trackerPing" class="ping-indicator active"></span><span id="trackerPingText" class="logo-text active">Tracking Active</span></div>
         <h1>Live Coordinate Link</h1>
         <p class="sub">Streaming coordinates for <strong>${esc(name)}</strong> (${esc(phone)}). Keep this page open.</p>
-        <div class="glass-card" style="padding: 28px; display: flex; flex-direction: column; gap: 16px;">
-          <div style="text-align: center; padding: 12px 0;">
-            <div id="gpsCoords" style="font-family: monospace; font-size: 24px; font-weight: 700; color: var(--accent); letter-spacing: -0.05em;">--.-----, --.-----</div>
-            <div id="gpsAddr" style="font-size: 13px; color: var(--text-secondary); margin-top: 8px; line-height: 1.4;">Locating device...</div>
+        <div class="glass-card" style="padding:28px;display:flex;flex-direction:column;gap:16px;">
+          <div style="text-align:center;padding:12px 0;">
+            <div id="gpsCoords" style="font-family:monospace;font-size:24px;font-weight:700;color:var(--accent);letter-spacing:-0.05em;">--.-----, --.-----</div>
+            <div id="gpsAddr" style="font-size:13px;color:var(--text-secondary);margin-top:8px;line-height:1.4;">Locating device...</div>
           </div>
           <button id="btnToggleShare" class="btn btn-active">Stop Live Sharing</button>
           <div id="shareStatus" class="status-box ok">GPS initialized. Establishing handshake...</div>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 10px;">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px;">
             <span class="info-tag">🛰️ Accuracy: <span id="gpsAccuracy">--</span>m</span>
             <span class="info-tag">📶 Carrier: ${esc(estimateCarrier(phone))}</span>
           </div>
         </div>
         <button id="btnSignOutUser" class="btn btn-outline">Change Account / Disconnect</button>
       </div>`;
-
-    const toggleBtn = document.getElementById('btnToggleShare');
-    const statusBox = document.getElementById('shareStatus');
-    const gpsCoords = document.getElementById('gpsCoords');
-    const gpsAddr = document.getElementById('gpsAddr');
-    const gpsAccuracy = document.getElementById('gpsAccuracy');
-    const trackerPing = document.getElementById('trackerPing');
-    const trackerPingText = document.getElementById('trackerPingText');
-
-    function setStatus(msg, type){ statusBox.className='status-box '+(type||''); statusBox.innerHTML=msg; }
-
-    if('geolocation' in navigator) { startWatch(); }
-    else { setStatus("This browser doesn't support Geolocation APIs.", 'err'); }
-
-    function startWatch() {
-      if(watchId !== null) return;
-      toggleBtn.disabled = true;
-      toggleBtn.textContent = 'Acquiring Handshake...';
-      watchId = navigator.geolocation.watchPosition(
-        async (pos) => {
-          const now = Date.now();
-          if(now - lastSavedAt < 3000) return;
-          lastSavedAt = now;
-          const lat = pos.coords.latitude, lng = pos.coords.longitude, accuracy = pos.coords.accuracy;
-          gpsCoords.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-          gpsAccuracy.textContent = Math.round(accuracy);
-          setStatus("Reverse geocoding coordinates...");
-          const place = await getPlaceName(lat, lng);
-          gpsAddr.textContent = place;
-          const docId = phone.replace(/[+]/g,'');
-          const payload = { name, phoneNumber: phone, lat, lng, placeName: place, accuracy, ts: now, carrier: estimateCarrier(phone) };
-          try {
-            await checkinsCol.doc(docId).set(payload);
-            toggleBtn.disabled = false;
-            toggleBtn.className = 'btn btn-active';
-            toggleBtn.textContent = 'Stop Live Sharing';
-            trackerPing.className = 'ping-indicator active';
-            trackerPingText.className = 'logo-text active';
-            trackerPingText.textContent = 'Tracking Active';
-            setStatus(`Handshake secure. Location synced · Accuracy ±${Math.round(accuracy)}m`, 'ok');
-          } catch(e) { setStatus("Database handshake failed. Retrying sync...", "err"); }
-        },
-        (err) => { stopWatch(); setStatus("GPS denied or timeout. Please enable location permissions and retry.", "err"); },
-        { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 }
-      );
+    const toggleBtn=document.getElementById('btnToggleShare'), statusBox=document.getElementById('shareStatus');
+    const gpsCoords=document.getElementById('gpsCoords'), gpsAddr=document.getElementById('gpsAddr');
+    const gpsAccuracy=document.getElementById('gpsAccuracy'), trackerPing=document.getElementById('trackerPing');
+    const trackerPingText=document.getElementById('trackerPingText');
+    function setStatus(msg,type){statusBox.className='status-box '+(type||'');statusBox.innerHTML=msg;}
+    if('geolocation' in navigator){startWatch();}else{setStatus("This browser doesn't support Geolocation.","err");}
+    function startWatch(){
+      if(watchId!==null)return;
+      toggleBtn.disabled=true; toggleBtn.textContent='Acquiring Handshake...';
+      watchId=navigator.geolocation.watchPosition(async(pos)=>{
+        const now=Date.now(); if(now-lastSavedAt<3000)return; lastSavedAt=now;
+        const lat=pos.coords.latitude, lng=pos.coords.longitude, accuracy=pos.coords.accuracy;
+        gpsCoords.textContent=`${lat.toFixed(5)}, ${lng.toFixed(5)}`; gpsAccuracy.textContent=Math.round(accuracy);
+        setStatus("Reverse geocoding coordinates...");
+        const place=await getPlaceName(lat,lng); gpsAddr.textContent=place;
+        const docId=phone.replace(/[+]/g,'');
+        const payload={name,phoneNumber:phone,lat,lng,placeName:place,accuracy,ts:now,carrier:estimateCarrier(phone)};
+        try{
+          await checkinsCol.doc(docId).set(payload);
+          toggleBtn.disabled=false; toggleBtn.className='btn btn-active'; toggleBtn.textContent='Stop Live Sharing';
+          trackerPing.className='ping-indicator active'; trackerPingText.className='logo-text active'; trackerPingText.textContent='Tracking Active';
+          setStatus(`Handshake secure. Location synced · Accuracy ±${Math.round(accuracy)}m`,'ok');
+        }catch(e){setStatus("Database handshake failed. Retrying sync...","err");}
+      },(err)=>{stopWatch();setStatus("GPS denied or timeout. Please enable location permissions.","err");},{enableHighAccuracy:true,timeout:25000,maximumAge:0});
     }
-
-    function stopWatch() {
-      if(watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
-      toggleBtn.disabled = false;
-      toggleBtn.className = 'btn';
-      toggleBtn.textContent = 'Resume Live Sharing';
-      trackerPing.className = 'ping-indicator';
-      trackerPingText.className = 'logo-text';
-      trackerPingText.textContent = 'Sharing Off';
+    function stopWatch(){
+      if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
+      toggleBtn.disabled=false; toggleBtn.className='btn'; toggleBtn.textContent='Resume Live Sharing';
+      trackerPing.className='ping-indicator'; trackerPingText.className='logo-text'; trackerPingText.textContent='Sharing Off';
     }
-
-    toggleBtn.onclick = () => {
-      if(watchId !== null){ stopWatch(); setStatus("Location tracking paused.", ""); }
-      else { startWatch(); setStatus("Re-acquiring device location...", ""); }
-    };
-
-    document.getElementById('btnSignOutUser').onclick = () => {
-      stopWatch();
-      sessionStorage.removeItem('muster_user_name');
-      sessionStorage.removeItem('muster_user_phone');
-      setView('user-login');
-    };
+    toggleBtn.onclick=()=>{if(watchId!==null){stopWatch();setStatus("Location tracking paused.","");}else{startWatch();setStatus("Re-acquiring device location...","");}};
+    document.getElementById('btnSignOutUser').onclick=()=>{stopWatch();sessionStorage.removeItem('muster_user_name');sessionStorage.removeItem('muster_user_phone');setView('user-login');};
   }
 
   // ---- ADMIN LOGIN ----
@@ -551,43 +309,24 @@ const FIREBASE_CONFIG = {
         <div class="logo-header"><span class="ping-indicator"></span><span class="logo-text">Admin Portal</span></div>
         <h1>Map Dashboard Access</h1>
         <p class="sub">Enter your authorization passcode to load the live roster and coordinate map.</p>
-        <div class="glass-card" style="padding: 28px;">
-          <div class="form-group">
-            <label for="adminPass">Authorization Passcode</label>
-            <input type="password" id="adminPass" class="input-field" placeholder="Enter secure passcode" />
-          </div>
+        <div class="glass-card" style="padding:28px;">
+          <div class="form-group"><label for="adminPass">Authorization Passcode</label><input type="password" id="adminPass" class="input-field" placeholder="Enter secure passcode" /></div>
           <button id="btnAdminLogin" class="btn">Authenticate Portal</button>
           <div id="adminStatus" class="status-box" style="display:none;"></div>
         </div>
-        <div class="portal-footer">
-          <a href="#" id="backPortal">← Back to Portal Select</a>
-        </div>
+        <div class="portal-footer"><a href="#" id="backPortal">← Back to Portal Select</a></div>
       </div>`;
-
-    const passInput = document.getElementById('adminPass');
-    const loginBtn = document.getElementById('btnAdminLogin');
-    const statusBox = document.getElementById('adminStatus');
-
-    document.getElementById('backPortal').onclick = (e) => { e.preventDefault(); setView('select-portal'); };
-
-    function showSt(msg, type){ statusBox.style.display='flex'; statusBox.className='status-box '+type; statusBox.textContent=msg; }
-
-    loginBtn.onclick = () => {
-      const pass = passInput.value.trim();
-      if(!pass){ showSt('Please enter the passcode.', 'err'); passInput.focus(); return; }
-      loginBtn.disabled = true;
-      loginBtn.textContent = 'Verifying...';
-      if(pass === "9876") {
-        sessionStorage.setItem('muster_admin_ok','1');
-        setView('admin-dashboard');
-      } else {
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Authenticate Portal';
-        showSt("Passcode invalid. Access Denied.", 'err');
-      }
+    const passInput=document.getElementById('adminPass'), loginBtn=document.getElementById('btnAdminLogin'), statusBox=document.getElementById('adminStatus');
+    document.getElementById('backPortal').onclick=(e)=>{e.preventDefault();setView('select-portal');};
+    function showSt(msg,type){statusBox.style.display='flex';statusBox.className='status-box '+type;statusBox.textContent=msg;}
+    loginBtn.onclick=()=>{
+      const pass=passInput.value.trim();
+      if(!pass){showSt('Please enter the passcode.','err');passInput.focus();return;}
+      loginBtn.disabled=true; loginBtn.textContent='Verifying...';
+      if(pass==="9876"){sessionStorage.setItem('muster_admin_ok','1');setView('admin-dashboard');}
+      else{loginBtn.disabled=false;loginBtn.textContent='Authenticate Portal';showSt("Passcode invalid. Access Denied.",'err');}
     };
-
-    passInput.onkeydown = (e) => { if(e.key==='Enter') loginBtn.click(); };
+    passInput.onkeydown=(e)=>{if(e.key==='Enter')loginBtn.click();};
   }
 
   // ---- ADMIN DASHBOARD ----
@@ -596,118 +335,82 @@ const FIREBASE_CONFIG = {
       <div class="dashboard-container">
         <div class="dashboard-sidebar">
           <div class="sidebar-header">
-            <div class="logo-header" style="justify-content: flex-start;">
-              <span class="ping-indicator active"></span>
-              <span class="logo-text active">Organizer Dashboard</span>
-            </div>
-            <div class="search-wrapper">
-              <span class="search-icon">🔍</span>
-              <input type="text" id="dbSearch" class="search-input" placeholder="Search name or phone..." />
-            </div>
+            <div class="logo-header" style="justify-content:flex-start;"><span class="ping-indicator active"></span><span class="logo-text active">Organizer Dashboard</span></div>
+            <div class="search-wrapper"><span class="search-icon">🔍</span><input type="text" id="dbSearch" class="search-input" placeholder="Search name or phone..." /></div>
           </div>
-          <div class="roster-list" id="dbRoster">
-            <div class="no-checkins"><span class="no-checkins-icon">📡</span><span>Connecting to live stream...</span></div>
-          </div>
-          <div class="sidebar-header" style="border-top: 1px solid var(--border-color); border-bottom: none; gap: 8px;">
+          <div class="roster-list" id="dbRoster"><div class="no-checkins"><span class="no-checkins-icon">📡</span><span>Connecting to live stream...</span></div></div>
+          <div class="sidebar-header" style="border-top:1px solid var(--border-color);border-bottom:none;gap:8px;">
             <button id="btnCopyShare" class="btn btn-outline" style="font-size:13px;padding:10px;">📋 Copy Share Link</button>
             <button id="btnSignOutAdmin" class="btn btn-outline" style="font-size:13px;padding:10px;border-color:rgba(255,94,94,0.2);color:var(--danger);">Disconnect</button>
           </div>
         </div>
         <div class="map-container"><div id="map"></div></div>
       </div>`;
-
-    const searchInput = document.getElementById('dbSearch');
-
-    document.getElementById('btnCopyShare').onclick = () => {
-      const shareUrl = location.origin + location.pathname;
-      navigator.clipboard.writeText(shareUrl).then(() => { alert("Share link copied! Send this URL to users so they can share their live location."); });
-    };
-
-    document.getElementById('btnSignOutAdmin').onclick = () => {
-      sessionStorage.removeItem('muster_admin_ok');
-      setView('select-portal');
-    };
-
-    mapInstance = L.map('map', { zoomControl: true }).setView([20, 0], 2);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
-    }).addTo(mapInstance);
-    markerLayer = L.layerGroup().addTo(mapInstance);
-
-    searchInput.oninput = () => filterRoster(searchInput.value.trim());
-
-    checkinSub = checkinsCol.onSnapshot((snap) => {
-      const entries = [];
-      snap.forEach(doc => entries.push(doc.data()));
-      entries.sort((a,b) => b.ts - a.ts);
-      cachedEntries = entries;
-      filterRoster(searchInput.value.trim());
-    }, () => {
-      document.getElementById('dbRoster').innerHTML = `<div class="no-checkins"><span style="color:var(--danger)">Connection error. Please re-authenticate.</span></div>`;
-    });
+    const searchInput=document.getElementById('dbSearch');
+    document.getElementById('btnCopyShare').onclick=()=>{navigator.clipboard.writeText(location.origin+location.pathname).then(()=>{alert("Share link copied! Send this URL to users.");});};
+    document.getElementById('btnSignOutAdmin').onclick=()=>{sessionStorage.removeItem('muster_admin_ok');setView('select-portal');};
+    mapInstance=L.map('map',{zoomControl:true}).setView([20,0],2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:20}).addTo(mapInstance);
+    markerLayer=L.layerGroup().addTo(mapInstance);
+    searchInput.oninput=()=>filterRoster(searchInput.value.trim());
+    checkinSub=checkinsCol.onSnapshot((snap)=>{
+      const entries=[];snap.forEach(doc=>entries.push(doc.data()));entries.sort((a,b)=>b.ts-a.ts);cachedEntries=entries;filterRoster(searchInput.value.trim());
+    },()=>{document.getElementById('dbRoster').innerHTML=`<div class="no-checkins"><span style="color:var(--danger)">Connection error. Please re-authenticate.</span></div>`;});
   }
 
   function filterRoster(query) {
-    const rosterEl = document.getElementById('dbRoster');
-    if(!rosterEl) return;
-    const lq = query.toLowerCase();
-    const filtered = cachedEntries.filter(e => (e.name||'').toLowerCase().includes(lq)||(e.phoneNumber||'').toLowerCase().includes(lq));
-
-    if(filtered.length === 0) {
-      rosterEl.innerHTML = `<div class="no-checkins"><span class="no-checkins-icon">🔍</span><span>No check-ins yet. Share the URL with your group.</span></div>`;
-      markerLayer.clearLayers(); markers = {}; return;
-    }
-
-    rosterEl.innerHTML = '';
-    markerLayer.clearLayers();
-    const bounds = [];
-    const newMarkers = {};
-
-    filtered.forEach(entry => {
-      const isStale = Date.now() - entry.ts > 30*60*1000;
-      const docKey = (entry.phoneNumber||'').replace(/[+]/g,'');
-
-      const row = document.createElement('div');
-      row.className = `user-row ${isStale ? 'stale' : ''}`;
-      row.innerHTML = `
-        <div class="user-row-header">
-          <span class="user-row-name">${esc(entry.name)}</span>
-          <span class="${isStale?'stale-badge':'active-badge'}">${isStale?'Stale':'Live'}</span>
-        </div>
+    const rosterEl=document.getElementById('dbRoster'); if(!rosterEl)return;
+    const lq=query.toLowerCase();
+    const filtered=cachedEntries.filter(e=>(e.name||'').toLowerCase().includes(lq)||(e.phoneNumber||'').toLowerCase().includes(lq));
+    if(filtered.length===0){rosterEl.innerHTML=`<div class="no-checkins"><span class="no-checkins-icon">🔍</span><span>No check-ins yet. Share the URL with your group.</span></div>`;markerLayer.clearLayers();markers={};return;}
+    rosterEl.innerHTML=''; markerLayer.clearLayers();
+    const bounds=[], newMarkers={};
+    filtered.forEach(entry=>{
+      const isStale=Date.now()-entry.ts>30*60*1000;
+      const docKey=(entry.phoneNumber||'').replace(/[+]/g,'');
+      const row=document.createElement('div');
+      row.className=`user-row ${isStale?'stale':''}`;
+      row.innerHTML=`
+        <div class="user-row-header"><span class="user-row-name">${esc(entry.name)}</span><span class="${isStale?'stale-badge':'active-badge'}">${isStale?'Stale':'Live'}</span></div>
         <div class="user-row-phone">${esc(entry.phoneNumber)}</div>
         <div class="user-row-address" title="${esc(entry.placeName)}">${esc(entry.placeName||'Coordinates Synced')}</div>
-        <div class="user-row-meta">
-          <span>📡 Acc: ±${Math.round(entry.accuracy)}m</span>
-          <span>⏱️ ${timeAgo(entry.ts)}</span>
-        </div>`;
+        <div class="user-row-meta"><span>📡 Acc: ±${Math.round(entry.accuracy)}m</span><span>⏱️ ${timeAgo(entry.ts)}</span></div>
+        <button class="row-directions-btn">🧭 Get Directions to ${esc(entry.name)}</button>`;
 
-      row.onclick = () => {
-        document.querySelectorAll('.user-row').forEach(el => el.classList.remove('selected'));
+      row.querySelector('.row-directions-btn').addEventListener('click',(e)=>{
+        e.stopPropagation();
+        openDirections(entry.lat, entry.lng, e.currentTarget, `🧭 Get Directions to ${entry.name}`);
+      });
+      row.addEventListener('click',()=>{
+        document.querySelectorAll('.user-row').forEach(el=>el.classList.remove('selected'));
         row.classList.add('selected');
-        mapInstance.setView([entry.lat, entry.lng], 16);
-        if(newMarkers[docKey]) newMarkers[docKey].openPopup();
-      };
+        mapInstance.setView([entry.lat,entry.lng],16);
+        if(newMarkers[docKey])newMarkers[docKey].openPopup();
+      });
       rosterEl.appendChild(row);
 
-      const color = isStale ? '#8e9db5' : '#ff7a00';
-      const marker = L.circleMarker([entry.lat, entry.lng], { radius:9, color, fillColor:color, fillOpacity:0.8, weight:3 });
+      const color=isStale?'#8e9db5':'#ff7a00';
+      const marker=L.circleMarker([entry.lat,entry.lng],{radius:9,color,fillColor:color,fillOpacity:0.8,weight:3});
+      const lat=entry.lat, lng=entry.lng;
       marker.bindPopup(`
         <div class="popup-details">
           <div class="popup-name">${esc(entry.name)}</div>
           <div class="popup-phone">${esc(entry.phoneNumber)}</div>
-          <div class="popup-place"><strong>Last Seen:</strong><br>${esc(entry.placeName)}</div>
-          <div style="font-size:11px;margin-top:4px;color:var(--text-secondary);">Accuracy: ±${Math.round(entry.accuracy)}m | ${esc(entry.carrier)}</div>
-          <a class="popup-google-maps" href="https://www.google.com/maps?q=${entry.lat},${entry.lng}" target="_blank" rel="noopener">🗺️ View on Google Maps</a>
+          <div class="popup-place"><strong>📍 Last Seen:</strong><br>${esc(entry.placeName)}</div>
+          <div style="font-size:11px;margin-top:4px;color:#8e9db5;">Accuracy: ±${Math.round(entry.accuracy)}m | ${esc(entry.carrier)}</div>
+          <a class="popup-google-maps" href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">🗺️ View on Google Maps</a>
+          <button class="popup-directions-btn" id="dir_${docKey}">🧭 Get Directions Here</button>
         </div>`);
+      marker.on('popupopen',()=>{
+        const btn=document.getElementById('dir_'+docKey);
+        if(btn) btn.onclick=()=>openDirections(lat,lng,btn,'🧭 Get Directions Here');
+      });
       marker.addTo(markerLayer);
-      newMarkers[docKey] = marker;
-      bounds.push([entry.lat, entry.lng]);
+      newMarkers[docKey]=marker;
+      bounds.push([entry.lat,entry.lng]);
     });
-
-    markers = newMarkers;
-    if(bounds.length && mapInstance) mapInstance.fitBounds(bounds, { padding:[50,50], maxZoom:14 });
+    markers=newMarkers;
+    if(bounds.length&&mapInstance)mapInstance.fitBounds(bounds,{padding:[50,50],maxZoom:14});
   }
 })();
 </script>
