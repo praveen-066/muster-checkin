@@ -3,416 +3,459 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Muster â€” Real-time Location Tracer</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<title>Muster — Location Check-in</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<!-- Firebase (free tier) provides the shared database for this site.
+     See the setup instructions below for how to get your own config. -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 <style>
-  :root {
-    --bg-gradient: linear-gradient(135deg, #070b12 0%, #0d1527 50%, #080d1a 100%);
-    --card-bg: rgba(16, 26, 48, 0.65);
-    --border-color: rgba(255, 255, 255, 0.08);
-    --border-focus: #ff7a00;
-    --text-primary: #f3f6fa;
-    --text-secondary: #8e9db5;
-    --accent: #ff7a00;
-    --accent-hover: #ff9533;
-    --accent-glow: rgba(255, 122, 0, 0.35);
-    --teal-success: #00f5d4;
-    --teal-glow: rgba(0, 245, 212, 0.25);
-    --danger: #ff5e5e;
-    --font-heading: 'Outfit', sans-serif;
-    --font-body: 'Inter', sans-serif;
+  :root{
+    --ink:#0c1420;
+    --panel:#101a29;
+    --panel-edge:#1d2e46;
+    --fog:#8296b0;
+    --paper:#e9eef6;
+    --ping:#e8a13b;
+    --teal:#3f8f8a;
+    --danger:#c1594f;
   }
-  * { box-sizing: border-box; transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
-  html, body { margin: 0; padding: 0; width: 100%; min-height: 100vh; background: var(--bg-gradient); color: var(--text-primary); font-family: var(--font-body); display: flex; flex-direction: column; overflow-x: hidden; }
-  .glass-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 12px 40px 0 rgba(0,0,0,0.5); }
-  .wrap { width: 100%; max-width: 480px; margin: auto; padding: 40px 24px; display: flex; flex-direction: column; gap: 24px; }
-  .logo-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; }
-  .ping-indicator { position: relative; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
-  .ping-indicator::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; border-radius: 50%; border: 2px solid var(--accent); animation: ping 2s infinite ease-out; }
-  .ping-indicator.active { background: var(--teal-success); }
-  .ping-indicator.active::after { border-color: var(--teal-success); }
-  @keyframes ping { 0% { width: 100%; height: 100%; opacity: 1; } 100% { width: 320%; height: 320%; opacity: 0; } }
-  .logo-text { font-family: var(--font-heading); font-weight: 700; font-size: 14px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
-  .logo-text.active { color: var(--teal-success); }
-  h1 { font-family: var(--font-heading); font-size: 32px; font-weight: 800; text-align: center; margin: 0; letter-spacing: -0.02em; }
-  .sub { font-size: 15px; color: var(--text-secondary); text-align: center; line-height: 1.6; margin: 0 0 10px 0; }
-  .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
-  label { font-family: var(--font-heading); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); }
-  .input-field { width: 100%; background: rgba(8,13,26,0.8); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 12px; padding: 14px 16px; font-size: 15px; font-family: var(--font-body); outline: none; }
-  .input-field:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
-  .btn { width: 100%; background: var(--accent); color: #0c1420; font-family: var(--font-heading); font-size: 16px; font-weight: 700; border: none; border-radius: 12px; padding: 16px; cursor: pointer; box-shadow: 0 4px 15px var(--accent-glow); display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .btn:hover { background: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 6px 20px var(--accent-glow); }
-  .btn:active { transform: translateY(0); }
-  .btn:disabled { background: rgba(255,255,255,0.08); color: var(--text-secondary); cursor: not-allowed; box-shadow: none; transform: none; }
-  .btn.btn-active { background: var(--teal-success); box-shadow: 0 4px 15px var(--teal-glow); }
-  .btn.btn-active:hover { background: #40ffd8; box-shadow: 0 6px 20px var(--teal-glow); }
-  .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); box-shadow: none; }
-  .btn-outline:hover { background: rgba(255,255,255,0.04); border-color: var(--text-secondary); box-shadow: none; }
-  .status-box { margin-top: 16px; padding: 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; display: flex; align-items: flex-start; gap: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); }
-  .status-box.ok { border-color: rgba(0,245,212,0.2); background: rgba(0,245,212,0.04); color: var(--teal-success); }
-  .status-box.err { border-color: rgba(255,94,94,0.2); background: rgba(255,94,94,0.04); color: var(--danger); }
-  .portal-footer { display: flex; justify-content: center; gap: 16px; margin-top: 16px; font-size: 13px; }
-  .portal-footer a { color: var(--text-secondary); text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 2px; }
-  .portal-footer a:hover { color: var(--accent); border-bottom-color: var(--accent); }
-  .portal-selection { display: flex; flex-direction: column; gap: 16px; }
-  .portal-choice-card { display: flex; align-items: center; gap: 20px; padding: 24px; cursor: pointer; border: 1px solid var(--border-color); background: rgba(255,255,255,0.02); border-radius: 16px; }
-  .portal-choice-card:hover { border-color: var(--accent); background: rgba(255,122,0,0.03); transform: translateY(-3px); }
-  .portal-choice-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; font-size: 24px; }
-  .portal-choice-info { display: flex; flex-direction: column; gap: 4px; }
-  .portal-choice-title { font-family: var(--font-heading); font-weight: 700; font-size: 16px; }
-  .portal-choice-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
-  .dashboard-container { width: 100vw; height: 100vh; display: grid; grid-template-columns: 360px 1fr; overflow: hidden; }
-  @media (max-width: 900px) { .dashboard-container { grid-template-columns: 1fr; grid-template-rows: 1fr 1.2fr; } }
-  .dashboard-sidebar { background: #090e1a; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; height: 100%; z-index: 10; }
-  .sidebar-header { padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 16px; }
-  .search-wrapper { position: relative; }
-  .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 16px; pointer-events: none; }
-  .search-input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 16px 12px 40px; color: var(--text-primary); font-size: 14px; outline: none; }
-  .search-input:focus { border-color: var(--accent); }
-  .roster-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-  .roster-list::-webkit-scrollbar { width: 6px; }
-  .roster-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
-  .user-row { padding: 16px; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid transparent; cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
-  .user-row:hover { background: rgba(255,255,255,0.04); border-color: var(--border-color); }
-  .user-row.selected { background: rgba(255,122,0,0.08); border-color: var(--accent); }
-  .user-row.stale { opacity: 0.55; }
-  .user-row-header { display: flex; justify-content: space-between; align-items: center; }
-  .user-row-name { font-weight: 600; font-size: 14px; }
-  .user-row-phone { font-family: monospace; font-size: 12px; color: var(--text-secondary); }
-  .user-row-address { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .user-row-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 6px; }
-  .stale-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 100px; background: rgba(255,255,255,0.1); color: var(--text-secondary); }
-  .active-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 100px; background: rgba(0,245,212,0.15); color: var(--teal-success); }
-  .map-container { width: 100%; height: 100%; position: relative; background: #070b12; }
-  #map { width: 100%; height: 100%; }
-  .leaflet-container { font-family: var(--font-body); background-color: #070b12 !important; }
-  .leaflet-bar { border: 1px solid var(--border-color) !important; box-shadow: none !important; background: var(--card-bg) !important; }
-  .leaflet-bar a { background: rgba(16,26,48,0.9) !important; color: var(--text-primary) !important; border-bottom: 1px solid var(--border-color) !important; }
-  .leaflet-bar a:hover { background: var(--accent) !important; color: #0c1420 !important; }
-  .leaflet-popup-content-wrapper { background: rgba(9,14,26,0.95) !important; border: 1px solid var(--border-color); color: var(--text-primary) !important; border-radius: 12px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important; backdrop-filter: blur(8px); }
-  .leaflet-popup-tip { background: rgba(9,14,26,0.95) !important; }
-  .popup-details { display: flex; flex-direction: column; gap: 6px; padding: 4px; font-size: 13px; }
-  .popup-name { font-family: var(--font-heading); font-weight: 700; font-size: 15px; color: var(--accent); }
-  .popup-phone { font-family: monospace; font-size: 12px; color: var(--text-secondary); }
-  .popup-place { font-size: 12px; margin-top: 4px; line-height: 1.4; }
-  .popup-google-maps { display: inline-block; margin-top: 8px; color: var(--teal-success); text-decoration: none; font-weight: 600; font-size: 12px; }
-  .popup-google-maps:hover { text-decoration: underline; }
-  .popup-directions-btn { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; padding: 10px 14px; background: var(--accent); color: #0c1420; font-weight: 700; font-size: 13px; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-family: var(--font-heading); }
-  .popup-directions-btn:hover { background: var(--accent-hover); }
-  .popup-directions-btn:disabled { background: rgba(255,255,255,0.1); color: var(--text-secondary); cursor: not-allowed; }
-  .row-directions-btn { margin-top: 8px; padding: 8px 12px; background: rgba(255,122,0,0.12); border: 1px solid rgba(255,122,0,0.3); color: var(--accent); font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer; width: 100%; font-family: var(--font-heading); display: flex; align-items: center; justify-content: center; gap: 6px; }
-  .row-directions-btn:hover { background: rgba(255,122,0,0.2); border-color: var(--accent); }
-  .info-tag { font-size: 11px; color: var(--text-secondary); background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; }
-  .no-checkins { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; height: 100%; padding: 40px; text-align: center; color: var(--text-secondary); }
-  .no-checkins-icon { font-size: 40px; color: rgba(255,255,255,0.05); }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+    min-height:100vh;
+  }
+  .mono{
+    font-family:'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    letter-spacing:0.02em;
+  }
+  .wrap{ max-width:520px; margin:0 auto; padding:48px 24px 64px; }
+  .eyebrow{
+    font-size:12px; text-transform:uppercase; letter-spacing:0.16em; color:var(--fog);
+    display:flex; align-items:center; gap:10px; margin-bottom:6px;
+  }
+  .ping-dot{
+    width:7px;height:7px;border-radius:50%; background:var(--ping);
+    animation:pulse 2.2s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(232,161,59,0.5);}
+    70%{box-shadow:0 0 0 10px rgba(232,161,59,0);}
+    100%{box-shadow:0 0 0 0 rgba(232,161,59,0);}
+  }
+  h1{ font-size:28px; font-weight:700; margin:0 0 8px; letter-spacing:-0.01em; }
+  .sub{ color:var(--fog); font-size:15px; line-height:1.5; margin:0 0 32px; }
+  .card{
+    background:var(--panel); border:1px solid var(--panel-edge);
+    border-radius:14px; padding:28px;
+  }
+  label{
+    display:block; font-size:12px; text-transform:uppercase;
+    letter-spacing:0.1em; color:var(--fog); margin-bottom:8px;
+  }
+  input[type=text], input[type=password]{
+    width:100%; background:var(--ink); border:1px solid var(--panel-edge);
+    color:var(--paper); border-radius:8px; padding:12px 14px; font-size:15px; margin-bottom:20px;
+  }
+  input:focus{ outline:none; border-color:var(--ping); }
+  button{
+    width:100%; background:var(--ping); color:#1a1206; border:none;
+    border-radius:8px; padding:14px; font-size:15px; font-weight:600; cursor:pointer;
+  }
+  button:hover{filter:brightness(1.08);}
+  button:disabled{ background:var(--panel-edge); color:var(--fog); cursor:not-allowed; }
+  button.ghost{ background:transparent; border:1px solid var(--panel-edge); color:var(--paper); }
+  .status{
+    margin-top:18px; font-size:14px; color:var(--fog);
+    display:flex; align-items:flex-start; gap:8px; line-height:1.5;
+  }
+  .status.ok{color:var(--teal);}
+  .status.err{color:var(--danger);}
+  .footlink{ text-align:center; margin-top:28px; font-size:13px; }
+  .footlink a{ color:var(--fog); text-decoration:none; border-bottom:1px dotted var(--panel-edge); }
+  .footlink a:hover{color:var(--paper);}
+
+  .admin-wrap{max-width:960px;}
+  .admin-head{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    margin-bottom:24px; flex-wrap:wrap; gap:12px;
+  }
+  .admin-grid{ display:grid; grid-template-columns:300px 1fr; gap:16px; }
+  @media (max-width:760px){ .admin-grid{grid-template-columns:1fr;} }
+  #map{
+    height:480px; border-radius:14px; border:1px solid var(--panel-edge); background:var(--panel);
+  }
+  .roster{
+    background:var(--panel); border:1px solid var(--panel-edge); border-radius:14px;
+    padding:8px; max-height:480px; overflow-y:auto;
+  }
+  .person{ padding:14px; border-radius:10px; cursor:pointer; border:1px solid transparent; }
+  .person:hover{background:rgba(255,255,255,0.03);}
+  .person.stale{opacity:0.55;}
+  .person .name{font-weight:600;font-size:14px;}
+  .person .meta{font-size:12px;color:var(--fog);margin-top:3px;}
+  .empty{ color:var(--fog); font-size:14px; padding:24px 14px; text-align:center; }
+  .small-btn{ width:auto; padding:8px 14px; font-size:13px; }
+  .badge{
+    display:inline-block; font-size:11px; text-transform:uppercase; letter-spacing:0.08em;
+    padding:2px 8px; border-radius:100px; background:var(--panel-edge); color:var(--fog);
+  }
+  .setup-warning{
+    max-width:520px; margin:48px auto; padding:24px; background:var(--panel);
+    border:1px solid var(--danger); border-radius:14px; font-size:14px; line-height:1.6;
+  }
+  .setup-warning code{
+    background:var(--ink); padding:2px 6px; border-radius:4px; font-size:13px;
+  }
 </style>
 </head>
 <body>
 <div id="app"></div>
+
 <script>
+/* =========================================================================
+   ONE-TIME SETUP — read this before deploying
+   =========================================================================
+   This site needs a free Firebase project to store check-ins, since it will
+   run on your own hosting rather than inside Claude.
+
+   1. Go to https://console.firebase.google.com and create a project (free).
+   2. In the project, go to Build > Firestore Database > Create database.
+      Start in "test mode" to begin (you can lock it down later).
+   3. Go to Project settings (gear icon) > General > "Your apps" > Web app
+      (</> icon). Register an app (any nickname). Firebase will show you a
+      firebaseConfig object like the one below.
+   4. Replace the FIREBASE_CONFIG object below with your own values.
+   5. Upload this single HTML file to any static host: Netlify (drag-and-drop
+      at app.netlify.com/drop), GitHub Pages, Vercel, or Cloudflare Pages.
+   That's it — no server code required.
+   ========================================================================= */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCwPxCjOYra4ceISJAhv9HdC3P2mSFZ9bo",
-  authDomain: "location-check-in-d2c22.firebaseapp.com",
-  projectId: "location-check-in-d2c22",
-  storageBucket: "location-check-in-d2c22.firebasestorage.app",
-  messagingSenderId: "224549828146",
-  appId: "1:224549828146:web:74adec4fb27c2863746e2b"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 (function(){
+  const params = new URLSearchParams(location.search);
+  const isAdmin = params.has('admin');
   const app = document.getElementById('app');
+
+  // Guard: don't run against placeholder config
+  if(!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === "YOUR_API_KEY"){
+    app.innerHTML = `
+      <div class="setup-warning">
+        <strong>Setup needed</strong><br><br>
+        This page hasn't been connected to a database yet. Open this file in a
+        text editor, find the <code>FIREBASE_CONFIG</code> object near the top
+        of the script, and replace it with your own Firebase project's config
+        (see the setup comment above it for step-by-step instructions).
+      </div>`;
+    return;
+  }
+
   firebase.initializeApp(FIREBASE_CONFIG);
   const db = firebase.firestore();
   const checkinsCol = db.collection('checkins');
+  const settingsDoc = db.collection('settings').doc('admin');
 
-  let watchId = null, lastSavedAt = 0, mapInstance = null, markerLayer = null;
-  let markers = {}, checkinSub = null, cachedEntries = [];
-
-  const params = new URLSearchParams(location.search);
-  if(params.has('admin')) {
-    sessionStorage.getItem('muster_admin_ok')==='1' ? setView('admin-dashboard') : setView('admin-login');
-  } else { setView('user-login'); }
-
-  function setView(v) {
-    if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
-    if(checkinSub){checkinSub();checkinSub=null;}
-    if(mapInstance){mapInstance.remove();mapInstance=null;}
-    if(v==='select-portal') renderSelectPortal();
-    else if(v==='user-login') renderUserLogin();
-    else if(v==='user-sharing') renderUserSharing();
-    else if(v==='admin-login') renderAdminLogin();
-    else if(v==='admin-dashboard') renderAdminDashboard();
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function timeAgo(ts){
+    const s = Math.floor((Date.now()-ts)/1000);
+    if(s<60) return s+'s ago';
+    const m = Math.floor(s/60);
+    if(m<60) return m+'m ago';
+    const h = Math.floor(m/60);
+    if(h<24) return h+'h ago';
+    return Math.floor(h/24)+'d ago';
   }
 
-  function esc(s){return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-  function formatPhoneInput(v){return v.replace(/[^\d+]/g,'');}
-  function timeAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return 'Just now';const m=Math.floor(s/60);if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago';}
-
-  async function getPlaceName(lat,lng){
-    try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,{headers:{'Accept-Language':'en'}});if(!r.ok)return 'Coordinates Shared';const d=await r.json();return d&&d.display_name?d.display_name:'Coordinates Shared';}catch(e){return 'Coordinates Shared';}
-  }
-
-  function estimateCarrier(p){
-    if(!p)return 'Unknown';
-    if(p.startsWith('+91')){const s=p.substring(3,5);if(['98','99','88','81','80'].includes(s))return 'Airtel';if(['97','96','95','90','85'].includes(s))return 'Vodafone Idea';return 'Jio';}
-    if(p.startsWith('+1'))return 'Verizon / AT&T';
-    if(p.startsWith('+44'))return 'EE / Vodafone';
-    return 'GSM Cellular';
-  }
-
-  function openDirections(destLat, destLng, btn, label) {
-    btn.disabled = true;
-    btn.textContent = 'ðŸ“ Getting your location...';
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const url = `https://www.google.com/maps/dir/?api=1&origin=${pos.coords.latitude},${pos.coords.longitude}&destination=${destLat},${destLng}&travelmode=driving`;
-        window.open(url, '_blank');
-        btn.disabled = false;
-        btn.textContent = label;
-      },
-      () => {
-        window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`, '_blank');
-        btn.disabled = false;
-        btn.textContent = label;
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }
-
-  // ---- SELECT PORTAL ----
-  function renderSelectPortal() {
+  // ---------- SHARE VIEW ----------
+  function renderShareView(){
     app.innerHTML = `
       <div class="wrap">
-        <div class="logo-header"><span class="ping-indicator"></span><span class="logo-text">Muster Tracer</span></div>
-        <h1>Choose Portal</h1>
-        <p class="sub">Select how you want to access the real-time tracking network.</p>
-        <div class="portal-selection">
-          <div class="portal-choice-card glass-card" id="goUserPortal">
-            <div class="portal-choice-icon">ðŸ“¡</div>
-            <div class="portal-choice-info">
-              <div class="portal-choice-title">Share Location Portal</div>
-              <div class="portal-choice-desc">For users to register and stream their live device location.</div>
-            </div>
-          </div>
-          <div class="portal-choice-card glass-card" id="goAdminPortal">
-            <div class="portal-choice-icon">ðŸ›¡ï¸</div>
-            <div class="portal-choice-info">
-              <div class="portal-choice-title">Organizer Map Portal</div>
-              <div class="portal-choice-desc">For administrators to view the live roster and map dashboard.</div>
-            </div>
-          </div>
+        <div class="eyebrow"><span class="ping-dot"></span>MUSTER · CHECK-IN</div>
+        <h1>Share your location</h1>
+        <p class="sub">Enter your name and tap the button below. Your browser will ask permission first — nothing is shared until you allow it. Only the organizer can see check-ins, and only your latest position is kept.</p>
+        <div class="card">
+          <label for="name">Your name</label>
+          <input type="text" id="name" placeholder="e.g. Priya" autocomplete="name" />
+          <button id="shareBtn">Share my location</button>
+          <button id="removeBtn" class="ghost" style="display:none; margin-top:12px;">Remove my check-in</button>
+          <div id="statusBox" class="status" style="display:none;"></div>
         </div>
-      </div>`;
-    document.getElementById('goUserPortal').onclick = () => setView('user-login');
-    document.getElementById('goAdminPortal').onclick = () => setView('admin-login');
-  }
+        <div class="footlink">Coordinating a group? <a href="#" id="adminLink">Open the organizer view</a></div>
+      </div>
+    `;
 
-  // ---- USER LOGIN ----
-  function renderUserLogin() {
-    app.innerHTML = `
-      <div class="wrap">
-        <div class="logo-header"><span class="ping-indicator"></span><span class="logo-text">User Portal</span></div>
-        <h1>Device Verification</h1>
-        <p class="sub">Enter your phone number, then explicitly allow location sharing to start.</p>
-        <div class="glass-card" style="padding:28px;">
-          <div class="form-group"><label for="userPhone">Phone Number</label><input type="text" id="userPhone" class="input-field" placeholder="e.g. +919876543210" /></div>
-          <button id="btnUserLogin" class="btn">Verify &amp; Share Location</button>
-          <div id="loginStatus" class="status-box" style="display:none;"></div>
-        </div>
-        <div class="portal-footer"><a href="#" id="backPortal">â† Back to Portal Select</a></div>
-      </div>`;
-    const phoneInput=document.getElementById('userPhone');
-    const loginBtn=document.getElementById('btnUserLogin'), statusBox=document.getElementById('loginStatus');
-    if(sessionStorage.getItem('muster_user_phone')) phoneInput.value=sessionStorage.getItem('muster_user_phone');
-    phoneInput.oninput=()=>{phoneInput.value=formatPhoneInput(phoneInput.value);};
-    document.getElementById('backPortal').onclick=(e)=>{e.preventDefault();setView('select-portal');};
-    loginBtn.onclick=()=>{
-      const phone=phoneInput.value.trim();
-      if(!phone||phone.length<10){
-        showSt('Please enter a valid phone number.','err');
-        phoneInput.focus();
+    document.getElementById('adminLink').addEventListener('click', (e)=>{
+      e.preventDefault();
+      const url = new URL(location.href);
+      url.searchParams.set('admin','1');
+      location.href = url.toString();
+    });
+
+    const nameInput = document.getElementById('name');
+    const btn = document.getElementById('shareBtn');
+    const removeBtn = document.getElementById('removeBtn');
+    const statusBox = document.getElementById('statusBox');
+
+    const savedName = sessionStorage.getItem('muster_name');
+    if(savedName) nameInput.value = savedName;
+
+    function setStatus(msg, kind){
+      statusBox.style.display = 'flex';
+      statusBox.className = 'status' + (kind ? ' '+kind : '');
+      statusBox.innerHTML = msg;
+    }
+
+    function docIdFor(name){
+      return name.toLowerCase().replace(/\s+/g,'_');
+    }
+
+    async function refreshRemoveVisibility(){
+      const name = nameInput.value.trim();
+      if(!name){ removeBtn.style.display = 'none'; return; }
+      try{
+        const snap = await checkinsCol.doc(docIdFor(name)).get();
+        removeBtn.style.display = snap.exists ? 'block' : 'none';
+      }catch(e){
+        removeBtn.style.display = 'none';
+      }
+    }
+    refreshRemoveVisibility();
+    nameInput.addEventListener('blur', refreshRemoveVisibility);
+
+    removeBtn.addEventListener('click', async ()=>{
+      const name = nameInput.value.trim();
+      if(!name) return;
+      removeBtn.disabled = true;
+      removeBtn.textContent = 'Removing…';
+      try{
+        await checkinsCol.doc(docIdFor(name)).delete();
+        removeBtn.style.display = 'none';
+        removeBtn.disabled = false;
+        removeBtn.textContent = 'Remove my check-in';
+        btn.textContent = 'Share my location';
+        setStatus('Your check-in has been removed.', 'ok');
+      }catch(err){
+        removeBtn.disabled = false;
+        removeBtn.textContent = 'Remove my check-in';
+        setStatus('Could not remove your check-in. Please try again.', 'err');
+      }
+    });
+
+    btn.addEventListener('click', async ()=>{
+      const name = nameInput.value.trim();
+      if(!name){
+        setStatus('Add your name first.', 'err');
+        nameInput.focus();
         return;
       }
-      const name=`Participant ${phone.slice(-4)}`;
-      sessionStorage.setItem('muster_user_name',name);
-      sessionStorage.setItem('muster_user_phone',phone);
-      setView('user-sharing');
-    };
-    function showSt(msg,type){statusBox.style.display='flex';statusBox.className='status-box '+type;statusBox.textContent=msg;}
-  }
+      sessionStorage.setItem('muster_name', name);
 
-  // ---- USER SHARING ----
-  function renderUserSharing() {
-    const name=sessionStorage.getItem('muster_user_name'), phone=sessionStorage.getItem('muster_user_phone');
-    if(!name||!phone){setView('user-login');return;}
-    app.innerHTML = `
-      <div class="wrap">
-        <div class="logo-header"><span id="trackerPing" class="ping-indicator active"></span><span id="trackerPingText" class="logo-text active">Tracking Active</span></div>
-        <h1>Live Coordinate Link</h1>
-        <p class="sub">Streaming coordinates for <strong>${esc(name)}</strong> (${esc(phone)}). Keep this page open.</p>
-        <div class="glass-card" style="padding:28px;display:flex;flex-direction:column;gap:16px;">
-          <div style="text-align:center;padding:12px 0;">
-            <div id="gpsCoords" style="font-family:monospace;font-size:24px;font-weight:700;color:var(--accent);letter-spacing:-0.05em;">--.-----, --.-----</div>
-            <div id="gpsAddr" style="font-size:13px;color:var(--text-secondary);margin-top:8px;line-height:1.4;">Locating device...</div>
-          </div>
-          <button id="btnToggleShare" class="btn btn-active">Stop Live Sharing</button>
-          <div id="shareStatus" class="status-box ok">GPS initialized. Establishing handshake...</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px;">
-            <span class="info-tag">ðŸ›°ï¸ Accuracy: <span id="gpsAccuracy">--</span>m</span>
-            <span class="info-tag">ðŸ“¶ Carrier: ${esc(estimateCarrier(phone))}</span>
-          </div>
-        </div>
-        <button id="btnSignOutUser" class="btn btn-outline">Change Account / Disconnect</button>
-      </div>`;
-    const toggleBtn=document.getElementById('btnToggleShare'), statusBox=document.getElementById('shareStatus');
-    const gpsCoords=document.getElementById('gpsCoords'), gpsAddr=document.getElementById('gpsAddr');
-    const gpsAccuracy=document.getElementById('gpsAccuracy'), trackerPing=document.getElementById('trackerPing');
-    const trackerPingText=document.getElementById('trackerPingText');
-    function setStatus(msg,type){statusBox.className='status-box '+(type||'');statusBox.innerHTML=msg;}
-    if('geolocation' in navigator){startWatch();}else{setStatus("This browser doesn't support Geolocation.","err");}
-    function startWatch(){
-      if(watchId!==null)return;
-      toggleBtn.disabled=true; toggleBtn.textContent='Acquiring Handshake...';
-      watchId=navigator.geolocation.watchPosition(async(pos)=>{
-        const now=Date.now(); if(now-lastSavedAt<3000)return; lastSavedAt=now;
-        const lat=pos.coords.latitude, lng=pos.coords.longitude, accuracy=pos.coords.accuracy;
-        gpsCoords.textContent=`${lat.toFixed(5)}, ${lng.toFixed(5)}`; gpsAccuracy.textContent=Math.round(accuracy);
-        setStatus("Reverse geocoding coordinates...");
-        const place=await getPlaceName(lat,lng); gpsAddr.textContent=place;
-        const docId=phone.replace(/[+]/g,'');
-        const payload={name,phoneNumber:phone,lat,lng,placeName:place,accuracy,ts:now,carrier:estimateCarrier(phone)};
-        try{
-          await checkinsCol.doc(docId).set(payload);
-          toggleBtn.disabled=false; toggleBtn.className='btn btn-active'; toggleBtn.textContent='Stop Live Sharing';
-          trackerPing.className='ping-indicator active'; trackerPingText.className='logo-text active'; trackerPingText.textContent='Tracking Active';
-          setStatus(`Handshake secure. Location synced Â· Accuracy Â±${Math.round(accuracy)}m`,'ok');
-        }catch(e){setStatus("Database handshake failed. Retrying sync...","err");}
-      },(err)=>{stopWatch();setStatus("GPS denied or timeout. Please enable location permissions.","err");},{enableHighAccuracy:true,timeout:25000,maximumAge:0});
-    }
-    function stopWatch(){
-      if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
-      toggleBtn.disabled=false; toggleBtn.className='btn'; toggleBtn.textContent='Resume Live Sharing';
-      trackerPing.className='ping-indicator'; trackerPingText.className='logo-text'; trackerPingText.textContent='Sharing Off';
-    }
-    toggleBtn.onclick=()=>{if(watchId!==null){stopWatch();setStatus("Location tracking paused.","");}else{startWatch();setStatus("Re-acquiring device location...","");}};
-    document.getElementById('btnSignOutUser').onclick=()=>{stopWatch();sessionStorage.removeItem('muster_user_name');sessionStorage.removeItem('muster_user_phone');setView('user-login');};
-  }
+      if(!('geolocation' in navigator)){
+        setStatus("This browser doesn't support location sharing.", 'err');
+        return;
+      }
 
-  // ---- ADMIN LOGIN ----
-  function renderAdminLogin() {
-    app.innerHTML = `
-      <div class="wrap">
-        <div class="logo-header"><span class="ping-indicator"></span><span class="logo-text">Admin Portal</span></div>
-        <h1>Map Dashboard Access</h1>
-        <p class="sub">Enter your authorization passcode to load the live roster and coordinate map.</p>
-        <div class="glass-card" style="padding:28px;">
-          <div class="form-group"><label for="adminPass">Authorization Passcode</label><input type="password" id="adminPass" class="input-field" placeholder="Enter secure passcode" /></div>
-          <button id="btnAdminLogin" class="btn">Authenticate Portal</button>
-          <div id="adminStatus" class="status-box" style="display:none;"></div>
-        </div>
-        <div class="portal-footer"><a href="#" id="backPortal">â† Back to Portal Select</a></div>
-      </div>`;
-    const passInput=document.getElementById('adminPass'), loginBtn=document.getElementById('btnAdminLogin'), statusBox=document.getElementById('adminStatus');
-    document.getElementById('backPortal').onclick=(e)=>{e.preventDefault();setView('select-portal');};
-    function showSt(msg,type){statusBox.style.display='flex';statusBox.className='status-box '+type;statusBox.textContent=msg;}
-    loginBtn.onclick=()=>{
-      const pass=passInput.value.trim();
-      if(!pass){showSt('Please enter the passcode.','err');passInput.focus();return;}
-      loginBtn.disabled=true; loginBtn.textContent='Verifying...';
-      if(pass==="9876"){sessionStorage.setItem('muster_admin_ok','1');setView('admin-dashboard');}
-      else{loginBtn.disabled=false;loginBtn.textContent='Authenticate Portal';showSt("Passcode invalid. Access Denied.",'err');}
-    };
-    passInput.onkeydown=(e)=>{if(e.key==='Enter')loginBtn.click();};
-  }
+      btn.disabled = true;
+      btn.textContent = 'Requesting permission…';
+      setStatus("Waiting on your browser's location prompt…");
 
-  // ---- ADMIN DASHBOARD ----
-  function renderAdminDashboard() {
-    app.innerHTML = `
-      <div class="dashboard-container">
-        <div class="dashboard-sidebar">
-          <div class="sidebar-header">
-            <div class="logo-header" style="justify-content:flex-start;"><span class="ping-indicator active"></span><span class="logo-text active">Organizer Dashboard</span></div>
-            <div class="search-wrapper"><span class="search-icon">ðŸ”</span><input type="text" id="dbSearch" class="search-input" placeholder="Search name or phone..." /></div>
-          </div>
-          <div class="roster-list" id="dbRoster"><div class="no-checkins"><span class="no-checkins-icon">ðŸ“¡</span><span>Connecting to live stream...</span></div></div>
-          <div class="sidebar-header" style="border-top:1px solid var(--border-color);border-bottom:none;gap:8px;">
-            <button id="btnCopyShare" class="btn btn-outline" style="font-size:13px;padding:10px;">ðŸ“‹ Copy Share Link</button>
-            <button id="btnSignOutAdmin" class="btn btn-outline" style="font-size:13px;padding:10px;border-color:rgba(255,94,94,0.2);color:var(--danger);">Disconnect</button>
-          </div>
-        </div>
-        <div class="map-container"><div id="map"></div></div>
-      </div>`;
-    const searchInput=document.getElementById('dbSearch');
-    document.getElementById('btnCopyShare').onclick=()=>{navigator.clipboard.writeText(location.origin+location.pathname).then(()=>{alert("Share link copied! Send this URL to users.");});};
-    document.getElementById('btnSignOutAdmin').onclick=()=>{sessionStorage.removeItem('muster_admin_ok');setView('select-portal');};
-    mapInstance=L.map('map',{zoomControl:true}).setView([20,0],2);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:20}).addTo(mapInstance);
-    markerLayer=L.layerGroup().addTo(mapInstance);
-    searchInput.oninput=()=>filterRoster(searchInput.value.trim());
-    checkinSub=checkinsCol.onSnapshot((snap)=>{
-      const entries=[];snap.forEach(doc=>entries.push(doc.data()));entries.sort((a,b)=>b.ts-a.ts);cachedEntries=entries;filterRoster(searchInput.value.trim());
-    },()=>{document.getElementById('dbRoster').innerHTML=`<div class="no-checkins"><span style="color:var(--danger)">Connection error. Please re-authenticate.</span></div>`;});
-  }
-
-  function filterRoster(query) {
-    const rosterEl=document.getElementById('dbRoster'); if(!rosterEl)return;
-    const lq=query.toLowerCase();
-    const filtered=cachedEntries.filter(e=>(e.name||'').toLowerCase().includes(lq)||(e.phoneNumber||'').toLowerCase().includes(lq));
-    if(filtered.length===0){rosterEl.innerHTML=`<div class="no-checkins"><span class="no-checkins-icon">ðŸ”</span><span>No check-ins yet. Share the URL with your group.</span></div>`;markerLayer.clearLayers();markers={};return;}
-    rosterEl.innerHTML=''; markerLayer.clearLayers();
-    const bounds=[], newMarkers={};
-    filtered.forEach(entry=>{
-      const isStale=Date.now()-entry.ts>30*60*1000;
-      const docKey=(entry.phoneNumber||'').replace(/[+]/g,'');
-      const row=document.createElement('div');
-      row.className=`user-row ${isStale?'stale':''}`;
-      row.innerHTML=`
-        <div class="user-row-header"><span class="user-row-name">${esc(entry.name)}</span><span class="${isStale?'stale-badge':'active-badge'}">${isStale?'Stale':'Live'}</span></div>
-        <div class="user-row-phone">${esc(entry.phoneNumber)}</div>
-        <div class="user-row-address" title="${esc(entry.placeName)}">${esc(entry.placeName||'Coordinates Synced')}</div>
-        <div class="user-row-meta"><span>ðŸ“¡ Acc: Â±${Math.round(entry.accuracy)}m</span><span>â±ï¸ ${timeAgo(entry.ts)}</span></div>
-        <button class="row-directions-btn">ðŸ§­ Get Directions to ${esc(entry.name)}</button>`;
-
-      row.querySelector('.row-directions-btn').addEventListener('click',(e)=>{
-        e.stopPropagation();
-        openDirections(entry.lat, entry.lng, e.currentTarget, `ðŸ§­ Get Directions to ${entry.name}`);
-      });
-      row.addEventListener('click',()=>{
-        document.querySelectorAll('.user-row').forEach(el=>el.classList.remove('selected'));
-        row.classList.add('selected');
-        mapInstance.setView([entry.lat,entry.lng],16);
-        if(newMarkers[docKey])newMarkers[docKey].openPopup();
-      });
-      rosterEl.appendChild(row);
-
-      const color=isStale?'#8e9db5':'#ff7a00';
-      const marker=L.circleMarker([entry.lat,entry.lng],{radius:9,color,fillColor:color,fillOpacity:0.8,weight:3});
-      const lat=entry.lat, lng=entry.lng;
-      marker.bindPopup(`
-        <div class="popup-details">
-          <div class="popup-name">${esc(entry.name)}</div>
-          <div class="popup-phone">${esc(entry.phoneNumber)}</div>
-          <div class="popup-place"><strong>ðŸ“ Last Seen:</strong><br>${esc(entry.placeName)}</div>
-          <div style="font-size:11px;margin-top:4px;color:#8e9db5;">Accuracy: Â±${Math.round(entry.accuracy)}m | ${esc(entry.carrier)}</div>
-          <a class="popup-google-maps" href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">ðŸ—ºï¸ View on Google Maps</a>
-          <button class="popup-directions-btn" id="dir_${docKey}">ðŸ§­ Get Directions Here</button>
-        </div>`);
-      marker.on('popupopen',()=>{
-        const btn=document.getElementById('dir_'+docKey);
-        if(btn) btn.onclick=()=>openDirections(lat,lng,btn,'ðŸ§­ Get Directions Here');
-      });
-      marker.addTo(markerLayer);
-      newMarkers[docKey]=marker;
-      bounds.push([entry.lat,entry.lng]);
+      navigator.geolocation.getCurrentPosition(
+        async (pos)=>{
+          const docId = name.toLowerCase().replace(/\s+/g,'_');
+          const entry = {
+            name,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            ts: Date.now()
+          };
+          try{
+            await checkinsCol.doc(docId).set(entry);
+            btn.disabled = false;
+            btn.textContent = 'Update my location';
+            removeBtn.style.display = 'block';
+            setStatus(`Shared. <span class="mono">${entry.lat.toFixed(5)}, ${entry.lng.toFixed(5)}</span>`, 'ok');
+          }catch(err){
+            btn.disabled = false;
+            btn.textContent = 'Try again';
+            setStatus('Could not save your check-in. Please try again.', 'err');
+          }
+        },
+        (err)=>{
+          btn.disabled = false;
+          btn.textContent = 'Share my location';
+          if(err.code === err.PERMISSION_DENIED){
+            setStatus('Location permission was denied, so nothing was shared.', 'err');
+          } else {
+            setStatus('Could not get your location. Please try again.', 'err');
+          }
+        },
+        { enableHighAccuracy:true, timeout:15000, maximumAge:0 }
+      );
     });
-    markers=newMarkers;
-    if(bounds.length&&mapInstance)mapInstance.fitBounds(bounds,{padding:[50,50],maxZoom:14});
+  }
+
+  // ---------- ADMIN VIEW ----------
+  function renderAdminGate(){
+    app.innerHTML = `
+      <div class="wrap">
+        <div class="eyebrow"><span class="ping-dot"></span>MUSTER · ORGANIZER</div>
+        <h1>Organizer view</h1>
+        <p class="sub">Set a passcode once. Anyone with this passcode (and this link plus <span class="mono">?admin=1</span>) can see everyone's latest check-in — this is a simple shared passcode, not a real login, so only share it with people who should see the roster.</p>
+        <div class="card">
+          <label for="pass">Passcode</label>
+          <input type="password" id="pass" placeholder="Choose or enter a passcode" />
+          <button id="enterBtn">Enter</button>
+          <div id="gateStatus" class="status" style="display:none;"></div>
+        </div>
+        <div class="footlink"><a href="?">Back to check-in</a></div>
+      </div>
+    `;
+    const enterBtn = document.getElementById('enterBtn');
+    const passInput = document.getElementById('pass');
+    const gateStatus = document.getElementById('gateStatus');
+
+    function showErr(msg){
+      gateStatus.style.display='flex';
+      gateStatus.className='status err';
+      gateStatus.textContent = msg;
+    }
+
+    enterBtn.addEventListener('click', async ()=>{
+      const pass = passInput.value.trim();
+      if(!pass){ showErr('Enter a passcode.'); return; }
+
+      enterBtn.disabled = true;
+      enterBtn.textContent = 'Checking…';
+      try{
+        const snap = await settingsDoc.get();
+        if(!snap.exists){
+          await settingsDoc.set({ passcode: pass });
+          sessionStorage.setItem('muster_admin_ok','1');
+          renderAdminDashboard();
+        } else if(snap.data().passcode === pass){
+          sessionStorage.setItem('muster_admin_ok','1');
+          renderAdminDashboard();
+        } else {
+          enterBtn.disabled = false;
+          enterBtn.textContent = 'Enter';
+          showErr("That passcode doesn't match.");
+        }
+      }catch(err){
+        enterBtn.disabled = false;
+        enterBtn.textContent = 'Enter';
+        showErr('Something went wrong. Try again.');
+      }
+    });
+
+    passInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') enterBtn.click(); });
+  }
+
+  let mapInstance = null;
+  let markerLayer = null;
+
+  async function renderAdminDashboard(){
+    app.innerHTML = `
+      <div class="wrap admin-wrap">
+        <div class="admin-head">
+          <div>
+            <div class="eyebrow"><span class="ping-dot"></span>MUSTER · ORGANIZER</div>
+            <h1 style="margin-bottom:0;">Roster</h1>
+          </div>
+          <button class="ghost small-btn" id="refreshBtn">Refresh</button>
+        </div>
+        <div class="admin-grid">
+          <div class="roster" id="roster"><div class="empty">Loading check-ins…</div></div>
+          <div id="map"></div>
+        </div>
+        <div class="footlink"><a href="?">Back to check-in link</a></div>
+      </div>
+    `;
+    document.getElementById('refreshBtn').addEventListener('click', loadRoster);
+
+    mapInstance = L.map('map', { zoomControl:true }).setView([20,0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(mapInstance);
+    markerLayer = L.layerGroup().addTo(mapInstance);
+
+    await loadRoster();
+  }
+
+  async function loadRoster(){
+    const rosterEl = document.getElementById('roster');
+    rosterEl.innerHTML = '<div class="empty">Loading check-ins…</div>';
+    try{
+      const snap = await checkinsCol.get();
+      if(snap.empty){
+        rosterEl.innerHTML = '<div class="empty">No check-ins yet. Share your link with people so they can check in.</div>';
+        markerLayer.clearLayers();
+        return;
+      }
+      const entries = [];
+      snap.forEach(doc => entries.push(doc.data()));
+      entries.sort((a,b)=> b.ts - a.ts);
+
+      markerLayer.clearLayers();
+      const bounds = [];
+      rosterEl.innerHTML = '';
+      entries.forEach(entry=>{
+        const staleMs = 30*60*1000;
+        const isStale = Date.now() - entry.ts > staleMs;
+        const row = document.createElement('div');
+        row.className = 'person' + (isStale ? ' stale' : '');
+        row.innerHTML = `
+          <div class="name">${esc(entry.name)} ${isStale ? '<span class="badge">stale</span>' : ''}</div>
+          <div class="meta mono">${entry.lat.toFixed(5)}, ${entry.lng.toFixed(5)} · ${timeAgo(entry.ts)}</div>
+        `;
+        row.addEventListener('click', ()=>{
+          mapInstance.setView([entry.lat, entry.lng], 15);
+        });
+        rosterEl.appendChild(row);
+
+        const marker = L.circleMarker([entry.lat, entry.lng], {
+          radius: 8,
+          color: isStale ? '#7a8ba3' : '#e8a13b',
+          fillColor: isStale ? '#7a8ba3' : '#e8a13b',
+          fillOpacity: 0.85,
+          weight: 2
+        }).bindPopup(`<b>${esc(entry.name)}</b><br>${timeAgo(entry.ts)}`);
+        marker.addTo(markerLayer);
+        bounds.push([entry.lat, entry.lng]);
+      });
+      if(bounds.length){
+        mapInstance.fitBounds(bounds, { padding:[40,40], maxZoom:14 });
+      }
+    }catch(err){
+      rosterEl.innerHTML = '<div class="empty">Could not load check-ins. Tap refresh to try again.</div>';
+    }
+  }
+
+  // ---------- ROUTER ----------
+  if(isAdmin){
+    if(sessionStorage.getItem('muster_admin_ok') === '1'){
+      renderAdminDashboard();
+    } else {
+      renderAdminGate();
+    }
+  } else {
+    renderShareView();
   }
 })();
 </script>
